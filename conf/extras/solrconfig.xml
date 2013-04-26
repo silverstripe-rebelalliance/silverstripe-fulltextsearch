@@ -1511,7 +1511,7 @@
            org.apache.solr.spelling.suggest.jaspell.JaspellLookup [default, jaspell-based]
            org.apache.solr.spelling.suggest.tst.TSTLookup   [ternary trees]
       -->
-      <str name="field">name</str>  <!-- the indexed field to derive suggestions from -->
+      <str name="field">_text</str>  <!-- the indexed field to derive suggestions from -->
       <float name="threshold">0.005</float>
       <str name="buildOnCommit">true</str>
 <!--

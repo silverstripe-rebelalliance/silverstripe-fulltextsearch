@@ -3,12 +3,14 @@ class SolrIndexTest extends SapphireTest {
 
 	function setUpOnce() {
 		parent::setUpOnce();
+		chdir(dirname(__FILE__));
+		require_once '../thirdparty/phockito/Phockito.php';
 
 		Phockito::include_hamcrest();
 	}
 	
 	function testBoost() {
-		$serviceMock = $this->getServiceMock();
+		$serviceMock = $this->getServiceSpy();
 		$index = new SolrIndexTest_FakeIndex();
 		$index->setService($serviceMock);
 
@@ -27,7 +29,7 @@ class SolrIndexTest extends SapphireTest {
 	}
 
 	function testIndexExcludesNullValues() {
-		$serviceMock = $this->getServiceMock();
+		$serviceMock = $this->getServiceSpy();
 		$index = new SolrIndexTest_FakeIndex();
 		$index->setService($serviceMock);		
 		$obj = new SearchUpdaterTest_Container();
@@ -86,21 +88,47 @@ class SolrIndexTest extends SapphireTest {
 		$index = new SolrIndexTest_FakeIndex();		
 		$index->addCopyField('sourceField', 'destField');
 		$defs = simplexml_load_string('<fields>' . $index->getCopyFieldDefinitions() . '</fields>');
-		$lastDef = array_pop($defs);
+		foreach ($defs->copyField[0]->attributes() as $name => $value) {
+			$lastDef[$name] = (string)$value;
+		}
 
 		$this->assertEquals('sourceField', $lastDef['source']);
 		$this->assertEquals('destField', $lastDef['dest']);
+	}
+
+	function testSuggestor() {
+		$result = false;
+		// Solr is built on curl requests so the following should never happen
+    		if (!function_exists('curl_init')){ 
+			$this->assertTrue($result);
+   		}
+
+		// try to keep hard coding to a mininum
+		$solrConfig = Solr::$solr_options;
+		$url = 'http://' . $solrConfig['host'] . ':' . $solrConfig['port'] . $solrConfig['path'] .
+			'SolrSearchIndex/suggest?wt=json&q=foojjgjhghjg';
+
+		$ch = curl_init($url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		$response = curl_exec($ch);
+		curl_close($ch);
+
+		$jsonObj = json_decode($response);
+		if (isset($jsonObj->spellcheck->suggestions)) {
+			$result = true;
+		}
+		$this->assertTrue($result);
 	}
 
 	protected function getServiceSpy() {
 		$serviceSpy = Phockito::spy('SolrService');
 		$fakeResponse = new Apache_Solr_Response(new Apache_Solr_HttpTransport_Response(null, null, null));
 
-		Phockito::when($serviceMock)
+		Phockito::when($serviceSpy)
 			->_sendRawPost(anything(), anything(), anything(), anything())
 			->return($fakeResponse);
 
-		return $serviceMock;
+		return $serviceSpy;
 	}
 
 }

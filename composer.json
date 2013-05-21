@@ -1,12 +1,12 @@
 {
-	"name": "silverstripe-rebelalliance/fulltextsearch",
-	"description": "Experimental version of fulltextsearch which adds a suggestor feature",
+	"name": "silverstripe/fulltextsearch",
+	"description": "Adds support for Fulltext Search engines like Sphinx and Solr to SilverStripe CMS",
 	"type": "silverstripe-module",
 	"keywords": ["silverstripe", "sphinx", "solr", "fulltext"],
 	"authors": [
 		{
-			"name": "Kirk Mayo",
-			"email": "kirk@silverstripe.com"
+			"name": "Hamish Friedlander",
+			"email": "hamish@silverstripe.com"
 		}
 	],
 	"require":

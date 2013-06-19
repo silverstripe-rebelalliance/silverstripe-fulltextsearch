@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <solr persistent="true">
   <cores adminPath="/admin/cores">
-    <core name="SolrSearchIndex" instanceDir="/opt/local/apache2/htdocs/southland-district-council/.solr/SolrSearchIndex/"/>
+    <core name="SolrSearchIndex" instanceDir="../../.solr/SolrSearchIndex/"/>
   </cores>
 </solr>

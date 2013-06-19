@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <solr persistent="true">
   <cores adminPath="/admin/cores">
-    <core name="SolrSearchIndex" instanceDir="../../.solr/SolrSearchIndex/"/>
+    <core name="SolrSearchIndex" instanceDir="SolrSearchIndex/"/>
   </cores>
 </solr>

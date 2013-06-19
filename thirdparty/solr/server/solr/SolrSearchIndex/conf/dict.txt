@@ -1,0 +1,4 @@
+# weighting for Solr
+foo Where can I spit on footpaths in town	1.0
+foo Where can I walk on footpaths	2.0
+foo Where can I drive on footpaths	3.0

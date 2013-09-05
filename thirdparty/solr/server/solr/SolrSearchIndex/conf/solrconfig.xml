@@ -1512,7 +1512,7 @@
            org.apache.solr.spelling.suggest.tst.TSTLookup   [ternary trees]
       -->
       <str name="field">_text</str>  <!-- the indexed field to derive suggestions from -->
-      <str name="sourceLocation">../../../../../../../assets/dict.txt</str> 
+      <str name="sourceLocation">dict.txt</str> 
       <float name="threshold">0.005</float>
       <str name="buildOnCommit">true</str>
 <!--

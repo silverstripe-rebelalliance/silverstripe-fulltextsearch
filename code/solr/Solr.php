@@ -109,6 +109,18 @@ class Solr_Configure extends BuildTask {
 							echo sprintf('Failed creating target directory %s, please check permissions', $targetDir);
 							return;
 						}
+						// create dict.txt file
+						$weightedSearches = WeightedSearch::get();
+						$dictionary = "$targetDir/dict.txt";
+						$fh = fopen($dictionary, 'w+');
+						foreach ($weightedSearches as $search) {
+							$data = strtolower($search->Keyword) . ' ';
+							$data .= $search->Phrase;
+							$data .= "\t{$search->Weighting}" . PHP_EOL;
+							fwrite($fh, $data);
+						}
+						fclose($fh);
+
 					}
 
 					file_put_contents("$targetDir/schema.xml", $instance->generateSchema());

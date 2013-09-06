@@ -143,15 +143,12 @@ class Solr_Configure extends BuildTask {
 					if (DataObject::get_one('WeightedSearch')) {
 						// create dict.txt file
 						$weightedSearches = WeightedSearch::get();
-						$dictionary = "$targetDir/dict.txt";
-						$fh = fopen($dictionary, 'w+');
 						foreach ($weightedSearches as $search) {
 							$data = strtolower($search->Keyword) . ' ';
 							$data .= $search->Phrase;
 							$data .= "\t{$search->Weighting}" . PHP_EOL;
-							fwrite($fh, $data);
 						}
-						fclose($fh);
+						WebDAV::upload_from_string($data, "$targetDir/dict.xml");
 					}
 
 					WebDAV::upload_from_string($instance->generateSchema(), "$targetDir/schema.xml");

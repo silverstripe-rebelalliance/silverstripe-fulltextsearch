@@ -152,6 +152,7 @@ class Solr_Configure extends BuildTask {
 						$fh = fopen("$sourceDir/dict.txt", 'w+');
 						fwrite($fh, $data);
 						fclose($fh);
+						echo sprintf("Created %s source dict.txt..." . PHP_EOL, $sourceDir);
 					}
 
 					WebDAV::upload_from_string($instance->generateSchema(), "$targetDir/schema.xml");

@@ -149,7 +149,9 @@ class Solr_Configure extends BuildTask {
 							$data .= $search->Phrase;
 							$data .= "\t{$search->Weighting}" . PHP_EOL;
 						}
-						WebDAV::upload_from_string($data, "$targetDir/dict.txt");
+						$fh = fopen("$sourceDir/dict.txt", 'w+');
+						fwrite($fh, $data);
+						fclose($fh);
 					}
 
 					WebDAV::upload_from_string($instance->generateSchema(), "$targetDir/schema.xml");

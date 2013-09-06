@@ -142,6 +142,7 @@ class Solr_Configure extends BuildTask {
 
 					if (DataObject::get_one('WeightedSearch')) {
 						// create dict.txt file
+						$data = '';
 						$weightedSearches = WeightedSearch::get();
 						foreach ($weightedSearches as $search) {
 							$data = strtolower($search->Keyword) . ' ';

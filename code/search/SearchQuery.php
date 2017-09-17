@@ -21,6 +21,11 @@ class SearchQuery extends ViewableData
     public $require = array();
     public $exclude = array();
 
+    /**
+     * @var SearchCriteria[]
+     */
+    public $criteria = array();
+
     protected $start = 0;
     protected $limit = -1;
 
@@ -51,7 +56,7 @@ class SearchQuery extends ViewableData
      * Similar to {@link search()}, but uses stemming and other similarity algorithms
      * to find the searched terms. For example, a term "fishing" would also likely find results
      * containing "fish" or "fisher". Depends on search implementation.
-     * 
+     *
      * @param  String $text See {@link search()}
      * @param  array $fields See {@link search()}
      * @param  array $boost See {@link search()}
@@ -69,7 +74,7 @@ class SearchQuery extends ViewableData
     /**
      * Similar to {@link search()}, but typically used to further narrow down
      * based on other facets which don't influence the field relevancy.
-     * 
+     *
      * @param  String $field Composite name of the field
      * @param  Mixed $values Scalar value, array of values, or an instance of SearchQuery_Range
      */
@@ -82,7 +87,7 @@ class SearchQuery extends ViewableData
 
     /**
      * Excludes results which match these criteria, inverse of {@link filter()}.
-     * 
+     *
      * @param  String $field
      * @param  mixed $values
      */
@@ -91,6 +96,32 @@ class SearchQuery extends ViewableData
         $excludes = isset($this->exclude[$field]) ? $this->exclude[$field] : array();
         $values = is_array($values) ? $values : array($values);
         $this->exclude[$field] = array_merge($excludes, $values);
+    }
+
+    /**
+     * You can pass through a string value, Criteria object, or Criterion object for $target.
+     *
+     * String value might be "SiteTree_Title" or whatever field in your index that you're trying to target.
+     *
+     * If you require complex filtering then you can build your Criteria object first with multiple layers/levels of
+     * Criteria, and then pass it in here when you're ready.
+     *
+     * If you have your own Criterion object that you've created that you want to use, you can also pass that in here.
+     *
+     * @param string|SearchCriteriaInterface $target
+     * @param mixed $value
+     * @param string|null $comparison
+     * @return SearchCriteria
+     */
+    public function filterBy($target, $value = null, $comparison = null)
+    {
+        if (!$target instanceof SearchCriteria) {
+            $target = new SearchCriteria($target, $value, $comparison);
+        }
+
+        $this->criteria[] = $target;
+
+        return $target;
     }
 
     public function start($start)

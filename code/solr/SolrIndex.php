@@ -934,6 +934,23 @@ abstract class SolrIndex extends SearchIndex
     }
 
     /**
+     * @param SearchQuery $searchQuery
+     * @return string[]
+     */
+    protected function getCriteriaComponent(SearchQuery $searchQuery)
+    {
+        $ps = '';
+
+        foreach ($searchQuery->criteria as $key => $clause)
+        {
+            $clause->appendPreparedStatementTo($ps);
+        }
+
+        // Returned as an array because that's how `getFiltersComponent` expects it.
+        return array($ps);
+    }
+
+    /**
      * Get all filter conditions for this search
      *
      * @param SearchQuery $searchQuery
@@ -943,7 +960,8 @@ abstract class SolrIndex extends SearchIndex
     {
         return array_merge(
             $this->getRequireFiltersComponent($searchQuery),
-            $this->getExcludeFiltersComponent($searchQuery)
+            $this->getExcludeFiltersComponent($searchQuery),
+            $this->getCriteriaComponent($searchQuery)
         );
     }
 

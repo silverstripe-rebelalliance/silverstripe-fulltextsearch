@@ -240,7 +240,103 @@ Example:
 	);
 	$results = singleton('MyIndex')->search($query);
 
-## Filtering
+## Basic Filtering
+
+Basic filtering is provided through the "filter" and "exclude" methods:
+
+	// Filter by products in either of these 3 categories.
+	$this->filter('Product_CategoryID', array(21, 24, 25));
+	// Exclude any products with no stock.
+	$this->exclude('Product_StockLevel', 0);
+
+All 'filters' are stored in the `$require` property of `SolrIndex`, and all 'exclusions' are stored in the `$exclude`
+property of `SolrIndex`. Both properties use the first parameter (the field name, EG: 'Product_CategoryID') as the key.
+If you filter by the same field name multiple times, you will end up with one accumulated filter - likewise for
+exclusions.
+
+If you want to perform more complex filtering (perhaps where you filter by the same field multiple times with different
+criteria, or you need a mixture of complex "and"s and "or"s), then "Filtering by Criteria" is also available (below).
+
+## Filtering by Criteria
+
+Using the `filterBy` method of `SearchQuery` will allow you to have more granular control over what happens with your
+filter.
+
+`Criterion`: A single filter requirement. EG: 'Product_Title' == 'My Product'.
+`Criteria`: A collection of `Criterion`.
+
+Defined in `AbstractCriterion` are all of the basic comparisons currently supported. EG: `EQUAL` and `NOT_EQUAL` for
+direct comparison, `IN` and `NOT_IN` for array value comparison, etc.
+
+To begin with, let's replicate the example from 'Basic Filtering' by using the `filterBy` method. The following example
+will add two separate `SearchCriteria` objects to our `criteria` array. Each `SearchCriteria` object has a single
+`Criterion` in it's collection:
+
+    // Example 1:
+    // Filter by products with stock that are in either of these 3 categories.
+    $searchQuery->filterBy('Product_CategoryID', array(21, 24, 25), AbstractCriterion::IN);
+    $searchQuery->filterBy('Product_StockLevel', 0, AbstractCriterion::GREATER_THAN);
+
+Method chaining is also available on the `filterBy` method. When using method chaining on `filterBy`, the
+`SearchCriteria` object that was created is returned to you for you to chain more requirements to. The following example
+will create a single `SearchCriteria` object in our `criteria` array, but that single object will have two `Criterion`:
+
+    // Example 2:
+    // Filter by products with stock that are in either of these 3 categories.
+    $searchQuery->filterBy('Product_CategoryID', array(21, 24, 25), AbstractCriterion::IN)
+	            ->addAnd('Product_StockLevel', 0, AbstractCriterion::GREATER_THAN);
+
+We can gain more control (and depth) over our `Criteria` by explicitly creating these objects first, and then passing
+them through to `filterBy`.
+This is the same example, but it could allow us to slowly build up our `Criteria` over time through the script, and then
+pass it to `filterBy` later on.
+
+    // Example 3:
+    // Filter by products in either of these 3 categories.
+    $criteria = new SearchCriteria('Product_CategoryID', array(21, 24, 25), AbstractCriterion::IN);
+    ... other stuff
+    // Exclude any products with no stock.
+    $criteria->addAnd('Product_StockLevel', 0, AbstractCriterion::GREATER_THAN);
+    ... other stuff
+    // Add criteria to Search Query.
+    $searchQuery->filterBy($criteria);
+
+Method chaining is available from the `create` static method on `SearchCriteria`:
+
+    // Example 4:
+    // Filter by products with stock that are in either of these 3 categories.
+    $criteria = SearchCriteria::create('Product_CategoryID', array(21, 24, 25), AbstractCriterion::IN)
+	    ->addAnd('Product_StockLevel', 0, AbstractCriterion::GREATER_THAN);
+	... other stuff
+    // Add criteria to Search Query.
+    $searchQuery->filterBy($criteria);
+
+Any of the above examples will result in a filter query that requires a product to have stock, and to be in one of the
+3 category IDs that we supplied. Something like:
+
+    if ($this && $that) {}
+
+Let's look into how we can control the groupings so that we could (for example) include all products in the 'Lego'
+category (let's give it the ID of `1`), regardless of whether or not that product has stock (because Lego rules). The
+outcome I'm looking for is something like:
+
+    if (($this && $that) || $theOther) {}
+
+Lets assume that you are using example 3 or 4 and already have a `Criteria` object for our "stock & in category" filter.
+We'll call this `$criteriaOne`. We then need to create a second separate Criteria for the Lego category:
+
+    // Filter by products in the Lego category.
+    // EQUAL is the default comparison.
+    $criteriaTwo = SearchCriteria::create('Product_CategoryID', 1);
+
+We then need to combine `$criteriaOne` and `$criteriaTwo` into a third "grouped" `Criteria` object.
+
+    $criteriaGrouped = SearchCriteria::create($criteriaOne)
+        ->addOr($criteriaTwo);
+    $query->filterBy($criteriaGrouped);
+              
+These filters can become as complex as you like. Any time you want a group of criteria, you just need to construct that
+separately first, and then group them appropriately.
 
 ## Connectors
 
@@ -275,4 +371,4 @@ Before constructing your `SearchQuery`, conditionally switch to the "live" stage
 
 ### How do I write nested/complex filters?
 
-TODO
+See "Filtering by Criteria".

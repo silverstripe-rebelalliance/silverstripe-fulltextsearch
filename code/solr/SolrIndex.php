@@ -935,19 +935,28 @@ abstract class SolrIndex extends SearchIndex
 
     /**
      * @param SearchQuery $searchQuery
-     * @return string[]
+     * @return string
+     * @throws Exception
      */
     protected function getCriteriaComponent(SearchQuery $searchQuery)
     {
+        if (count($searchQuery->criteria) === 0) {
+            return null;
+        }
+
+        if ($searchQuery->getAdapter() === null) {
+            throw new Exception('SearchQuery does not have a SearchAdapter applied');
+        }
+
         $ps = '';
 
-        foreach ($searchQuery->criteria as $key => $clause)
-        {
+        foreach ($searchQuery->criteria as $clause) {
+            $clause->setAdapter($searchQuery->getAdapter());
             $clause->appendPreparedStatementTo($ps);
         }
 
         // Returned as an array because that's how `getFiltersComponent` expects it.
-        return array($ps);
+        return $ps;
     }
 
     /**
@@ -958,11 +967,18 @@ abstract class SolrIndex extends SearchIndex
      */
     public function getFiltersComponent(SearchQuery $searchQuery)
     {
-        return array_merge(
+        $criteriaComponent = $this->getCriteriaComponent($searchQuery);
+
+        $components = array_merge(
             $this->getRequireFiltersComponent($searchQuery),
-            $this->getExcludeFiltersComponent($searchQuery),
-            $this->getCriteriaComponent($searchQuery)
+            $this->getExcludeFiltersComponent($searchQuery)
         );
+
+        if ($criteriaComponent !== null) {
+            $components[] = $criteriaComponent;
+        }
+
+        return $components;
     }
 
     protected $service;

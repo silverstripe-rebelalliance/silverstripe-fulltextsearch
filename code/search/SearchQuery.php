@@ -22,23 +22,32 @@ class SearchQuery extends ViewableData
     public $exclude = array();
 
     /**
-     * @var SearchCriteria[]
+     * @var SearchCriteriaInterface[]
      */
     public $criteria = array();
 
     protected $start = 0;
     protected $limit = -1;
 
+    /**
+     * @var SearchAdapterInterface
+     */
+    protected $adapter = null;
+
     /** These are the API functions */
 
     public function __construct()
     {
+        parent::__construct();
+
         if (self::$missing === null) {
             self::$missing = new stdClass();
         }
         if (self::$present === null) {
             self::$present = new stdClass();
         }
+
+        $this->adapter = SearchAdapterFactory::create(Config::inst()->get('SearchQuery', 'driver'));
     }
 
     /**
@@ -111,12 +120,17 @@ class SearchQuery extends ViewableData
      * @param string|SearchCriteriaInterface $target
      * @param mixed $value
      * @param string|null $comparison
-     * @return SearchCriteria
+     * @param AbstractSearchQueryWriter $searchQueryWriter
+     * @return SearchCriteriaInterface
      */
-    public function filterBy($target, $value = null, $comparison = null)
-    {
-        if (!$target instanceof SearchCriteria) {
-            $target = new SearchCriteria($target, $value, $comparison);
+    public function filterBy(
+        $target,
+        $value = null,
+        $comparison = null,
+        AbstractSearchQueryWriter $searchQueryWriter = null
+    ) {
+        if (!$target instanceof SearchCriteriaInterface) {
+            $target = new SearchCriteria($target, $value, $comparison, $searchQueryWriter);
         }
 
         $this->criteria[] = $target;
@@ -143,6 +157,14 @@ class SearchQuery extends ViewableData
     public function isfiltered()
     {
         return $this->search || $this->classes || $this->require || $this->exclude;
+    }
+
+    /**
+     * @return SearchAdapterInterface
+     */
+    public function getAdapter()
+    {
+        return $this->adapter;
     }
 
     public function __toString()

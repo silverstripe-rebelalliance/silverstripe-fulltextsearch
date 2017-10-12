@@ -1,6 +1,6 @@
 <?php
 
-abstract class AbstractSearchCriterion implements SearchCriteriaInterface
+class SearchCriterion implements SearchCriteriaInterface
 {
     /**
      * field:value
@@ -73,6 +73,13 @@ abstract class AbstractSearchCriterion implements SearchCriteriaInterface
     const ISNOTNULL = 'ISNOTNULL';
 
     /**
+     * A custom Criterion with it's own SearchQueryWriter
+     *
+     * @var string
+     */
+    const CUSTOM = 'CUSTOM';
+
+    /**
      * @var string
      */
     protected $comparison;
@@ -90,84 +97,128 @@ abstract class AbstractSearchCriterion implements SearchCriteriaInterface
     protected $value;
 
     /**
+     * @var SearchAdapterInterface
+     */
+    protected $adapter;
+
+    /**
+     * @var AbstractSearchQueryWriter
+     */
+    protected $searchQueryWriter;
+
+    /**
      * @param string $target
      * @param mixed $value
      * @param string|null $comparison
+     * @param AbstractSearchQueryWriter $searchQueryWriter
      */
-    public function __construct($target, $value = null, $comparison = null)
-    {
+    public function __construct(
+        $target,
+        $value,
+        $comparison = null,
+        AbstractSearchQueryWriter $searchQueryWriter = null
+    ) {
+        // EQUAL is our default comparison.
         if ($comparison === null) {
-            $comparison = AbstractSearchCriterion::EQUAL;
+            $comparison = SearchCriterion::EQUAL;
         }
 
         $this->setTarget($target);
         $this->setValue($value);
         $this->setComparison($comparison);
+        $this->setSearchQueryWriter($searchQueryWriter);
     }
 
     /**
      * Static create method provided so that you can implement method chaining.
      *
-     * @return AbstractSearchCriterion
+     * @return SearchCriterion
      */
-    public static function create() {
+    public static function create()
+    {
         $args = func_get_args();
 
         $class = get_called_class();
-        if($class == 'Object') $class = array_shift($args);
+        if ($class == 'Object') {
+            $class = array_shift($args);
+        }
 
         return Injector::inst()->createWithArgs($class, $args);
     }
 
     /**
-     * @param string $target
-     * @param mixed $value
-     * @param string|null $comparison
-     * @return AbstractSearchCriterion
+     * @return SearchAdapterInterface
      */
-    public static function factory($target, $value = null, $comparison = null)
+    public function getAdapter()
     {
-        // If any SearchCriterion object was passed in as the target, just return it as it is. We assume that this
-        // SearchCriterion object has already had all of it's required values set, and is ready to be used.
-        if ($target instanceof AbstractSearchCriterion) {
-            return $target;
-        }
-
-        // Our default comparison is `EQUAL`.
-        if ($comparison === null) {
-            $comparison = AbstractSearchCriterion::EQUAL;
-        }
-
-        switch ($comparison) {
-            case AbstractSearchCriterion::EQUAL:
-            case AbstractSearchCriterion::NOT_EQUAL:
-                return new BasicSearchCriterion($target, $value, $comparison);
-            case AbstractSearchCriterion::IN:
-            case AbstractSearchCriterion::NOT_IN:
-                return new InSearchCriterion($target, $value, $comparison);
-            case AbstractSearchCriterion::GREATER_EQUAL:
-            case AbstractSearchCriterion::GREATER_THAN:
-            case AbstractSearchCriterion::LESS_EQUAL:
-            case AbstractSearchCriterion::LESS_THAN:
-            case AbstractSearchCriterion::ISNULL:
-            case AbstractSearchCriterion::ISNOTNULL:
-                return new RangeSearchCriterion($target, $value, $comparison);
-            default:
-                throw new InvalidArgumentException('Unsupported comparison type in AbstractCriterion factory');
-        }
+        return $this->adapter;
     }
 
     /**
-     * Is this a positive (+) or negative (-) Solr comparison.
-     *
-     * @return mixed
+     * @param SearchAdapterInterface $adapter
+     * @return $this
      */
-    abstract protected function getComparisonPolarity();
+    public function setAdapter(SearchAdapterInterface $adapter)
+    {
+        $this->adapter = $adapter;
+
+        return $this;
+    }
+
+    /**
+     * @param string $ps
+     * @return void
+     * @throws Exception
+     */
+    public function appendPreparedStatementTo(&$ps)
+    {
+        $adapter = $this->getAdapter();
+
+        if (!$adapter instanceof SearchAdapterInterface) {
+            throw new Exception('No adapter has been applied to SearchCriteria');
+        }
+
+        $ps .= $adapter->generateQueryString($this);
+    }
+
+    /**
+     * String values should be passed into our filter string with quotation marks and escaping.
+     *
+     * @param string $value
+     * @return string
+     */
+    public function getQuoteValue($value)
+    {
+        if (is_string($value)) {
+            return '"' . addslashes($value) . '"';
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return AbstractSearchQueryWriter
+     */
+    public function getSearchQueryWriter()
+    {
+        return $this->searchQueryWriter;
+    }
+
+    /**
+     * @param AbstractSearchQueryWriter $searchQueryWriter
+     * @return $this
+     */
+    public function setSearchQueryWriter($searchQueryWriter)
+    {
+        $this->searchQueryWriter = $searchQueryWriter;
+
+        return $this;
+    }
 
     /**
      * @return string
      */
-    protected function getComparison()
+    public function getComparison()
     {
         return $this->comparison;
     }
@@ -186,7 +237,7 @@ abstract class AbstractSearchCriterion implements SearchCriteriaInterface
     /**
      * @return string
      */
-    protected function getTarget()
+    public function getTarget()
     {
         return $this->target;
     }
@@ -205,7 +256,7 @@ abstract class AbstractSearchCriterion implements SearchCriteriaInterface
     /**
      * @return mixed
      */
-    protected function getValue()
+    public function getValue()
     {
         return $this->value;
     }
@@ -219,20 +270,5 @@ abstract class AbstractSearchCriterion implements SearchCriteriaInterface
         $this->value = $value;
 
         return $this;
-    }
-
-    /**
-     * String values should be passed into our filter string with quotation marks and escaping.
-     *
-     * @param string $value
-     * @return string
-     */
-    protected function getQuoteValue($value)
-    {
-        if (is_string($value)) {
-            return '"' . addslashes($value) . '"';
-        }
-
-        return $value;
     }
 }

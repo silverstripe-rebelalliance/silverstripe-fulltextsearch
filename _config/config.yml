@@ -1,3 +1,5 @@
 DataObject:
   extensions:
     - 'SearchUpdater_ObjectHandler'
+SearchQuery:
+  driver: solr

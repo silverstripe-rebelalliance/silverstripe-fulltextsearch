@@ -7,14 +7,14 @@ class SearchCriteria implements SearchCriteriaInterface
      *
      * @param string
      */
-    const UND = ' AND ';
+    const UND = 'AND';
 
     /**
      * "OR" is a protected PHP7 keyword.
      *
      * @param string
      */
-    const ODER = ' OR ';
+    const ODER = 'OR';
 
     /**
      * A collection of SearchCriterion and SearchCriteria.
@@ -31,6 +31,11 @@ class SearchCriteria implements SearchCriteriaInterface
     protected $conjunctions = array();
 
     /**
+     * @var SearchAdapterInterface|null
+     */
+    protected $adapter = null;
+
+    /**
      * You can pass through a string value, Criteria object, or Criterion object for $target.
      *
      * String value might be "SiteTree_Title" or whatever field in your index that you're trying to target.
@@ -40,13 +45,18 @@ class SearchCriteria implements SearchCriteriaInterface
      *
      * If you have your own Criterion object that you've created that you want to use, you can also pass that in here.
      *
-     * @param string|AbstractSearchCriterion $target
+     * @param string|SearchCriterion $target
      * @param mixed $value
      * @param string|null $comparison
+     * @param AbstractSearchQueryWriter $searchQueryWriter
      */
-    public function __construct($target, $value = null, $comparison = null)
-    {
-        $this->addClause($this->getCriterionForCondition($target, $value, $comparison));
+    public function __construct(
+        $target,
+        $value = null,
+        $comparison = null,
+        AbstractSearchQueryWriter $searchQueryWriter = null
+    ) {
+        $this->addClause($this->getCriterionForCondition($target, $value, $comparison, $searchQueryWriter));
     }
 
     /**
@@ -55,42 +65,82 @@ class SearchCriteria implements SearchCriteriaInterface
      * @param $target
      * @param null $value
      * @param null $comparison
+     * @param AbstractSearchQueryWriter $searchQueryWriter
      * @return SearchCriteria
      */
-    public static function create($target, $value = null, $comparison = null) {
-        return new SearchCriteria($target, $value, $comparison);
+    public static function create(
+        $target,
+        $value = null,
+        $comparison = null,
+        AbstractSearchQueryWriter $searchQueryWriter = null
+    ) {
+        return new SearchCriteria($target, $value, $comparison, $searchQueryWriter);
+    }
+
+    /**
+     * @return null|SearchAdapterInterface
+     */
+    public function getAdapter()
+    {
+        return $this->adapter;
+    }
+
+    /**
+     * @param SearchAdapterInterface $adapter
+     * @return $this
+     */
+    public function setAdapter(SearchAdapterInterface $adapter)
+    {
+        $this->adapter = $adapter;
+
+        return $this;
     }
 
     /**
      * @param string $ps Current prepared statement.
      * @return void;
+     * @throws Exception
      */
     public function appendPreparedStatementTo(&$ps)
     {
-        $ps .= $this->getOpenComparisonContainer();
+        $adapter = $this->getAdapter();
+
+        if (!$adapter instanceof SearchAdapterInterface) {
+            throw new Exception('No adapter has been applied to SearchCriteria');
+        }
+
+        $ps .= $adapter->getOpenComparisonContainer();
 
         foreach ($this->getClauses() as $key => $clause) {
+            $clause->setAdapter($adapter);
             $clause->appendPreparedStatementTo($ps);
 
             // There's always one less conjunction then there are clauses.
             if ($this->getConjunction($key) !== null) {
-                $ps .= $this->getConjunction($key);
+                $ps .= $adapter->getConjunctionFor($this->getConjunction($key));
             }
         }
 
-        $ps .= $this->getCloseComparisonContainer();
+        $ps .= $adapter->getCloseComparisonContainer();
     }
 
     /**
      * @param string|SearchCriteriaInterface $target
      * @param mixed $value
      * @param string|null $comparison
+     * @param AbstractSearchQueryWriter $searchQueryWriter
      * @return $this
      */
-    public function addAnd($target, $value = null, $comparison = null)
-    {
+    public function addAnd(
+        $target,
+        $value = null,
+        $comparison = null,
+        AbstractSearchQueryWriter $searchQueryWriter = null
+    ) {
+        $criterion = $this->getCriterionForCondition($target, $value, $comparison, $searchQueryWriter);
+
         $this->addConjunction(SearchCriteria::UND);
-        $this->addClause(AbstractSearchCriterion::factory($target, $value, $comparison));
+        $this->addClause($criterion);
 
         return $this;
     }
@@ -99,12 +149,19 @@ class SearchCriteria implements SearchCriteriaInterface
      * @param string|SearchCriteriaInterface $target
      * @param mixed $value
      * @param string|null $comparison
+     * @param AbstractSearchQueryWriter $searchQueryWriter
      * @return $this
      */
-    public function addOr($target, $value = null, $comparison = null)
-    {
+    public function addOr(
+        $target,
+        $value = null,
+        $comparison = null,
+        AbstractSearchQueryWriter $searchQueryWriter = null
+    ) {
+        $criterion = $this->getCriterionForCondition($target, $value, $comparison, $searchQueryWriter);
+
         $this->addConjunction(SearchCriteria::ODER);
-        $this->addClause(AbstractSearchCriterion::factory($target, $value, $comparison));
+        $this->addClause($criterion);
 
         return $this;
     }
@@ -113,39 +170,20 @@ class SearchCriteria implements SearchCriteriaInterface
      * @param string|SearchCriteriaInterface $target
      * @param mixed $value
      * @param string $comparison
+     * @param AbstractSearchQueryWriter $searchQueryWriter
      * @return SearchCriteriaInterface
      */
-    protected function getCriterionForCondition($target, $value, $comparison)
-    {
+    protected function getCriterionForCondition(
+        $target,
+        $value,
+        $comparison,
+        AbstractSearchQueryWriter $searchQueryWriter = null
+    ) {
         if ($target instanceof SearchCriteriaInterface) {
             return $target;
         }
 
-        return AbstractSearchCriterion::factory($target, $value, $comparison);
-    }
-
-    /**
-     * @return string
-     */
-    protected function getOpenComparisonContainer()
-    {
-        if (count($this->getClauses()) > 1) {
-            return '+(';
-        }
-
-        return '';
-    }
-
-    /**
-     * @return string
-     */
-    protected function getCloseComparisonContainer()
-    {
-        if (count($this->getClauses()) > 1) {
-            return ')';
-        }
-
-        return '';
+        return new SearchCriterion($target, $value, $comparison, $searchQueryWriter);
     }
 
     /**

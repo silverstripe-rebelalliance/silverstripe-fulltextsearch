@@ -18,4 +18,15 @@ interface SearchCriteriaInterface
      * @return mixed
      */
     public function appendPreparedStatementTo(&$ps);
+
+    /**
+     * @return SearchAdapterInterface
+     */
+    public function getAdapter();
+
+    /**
+     * @param SearchAdapterInterface $adapter
+     * @return $this
+     */
+    public function setAdapter(SearchAdapterInterface $adapter);
 }
